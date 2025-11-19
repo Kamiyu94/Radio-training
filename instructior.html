@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>教官監控｜拆彈訓練</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial; background:#111; color:#fff; padding:20px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { border:1px solid #444; padding:12px; text-align:left; }
+    th { background:#333; }
+    .bomb { color:#f66; } .manual { color:#6f6; }
+  </style>
+</head>
+<body>
+  <h1>實時拆彈訓練監控（掃碼即顯示）</h1>
+  <table id="table">
+    <thead><tr><th>時間</th><th>房間代碼</th><th>角色</th></tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const supabase = Supabase.createClient(
+      'YOUR_SUPABASE_URL',   // 部署後會自動替換成你的
+      'YOUR_SUPABASE_ANON_KEY'
+    );
+
+    const tbody = document.querySelector('#table tbody');
+
+    supabase.channel('sessions-channel')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'sessions' }, payload => {
+        const d = payload.new;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${new Date(d.entered_at).toLocaleString()}</td>
+                        <td class="\( {d.role==='manual'?'manual':'bomb'}"><b> \){d.room}</b></td>
+                        <td>${d.role||'bomb'} 已報到</td>`;
+        tbody.prepend(tr);
+      })
+      .subscribe();
+
+    // 頁面載入時也抓一次歷史
+    supabase.from('sessions').select().order('entered_at', {ascending:false}).then(res => {
+      res.data.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>\( {new Date(d.entered_at).toLocaleString()}</td><td><b> \){d.room}</b></td><td>${d.role||'bomb'}</td>`;
+        tbody.appendChild(tr);
+      });
+    });
+  </script>
+</body>
+</html>
