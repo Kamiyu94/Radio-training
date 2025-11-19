@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>拆彈訓練系統｜實體無線電版</title>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { margin:0; background:#000; font-family:Arial; }
+    #game-container { width:100vw; height:100vh; }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <script>
+    // === 從你的 GitHub Secrets 讀取（部署後自動替換）===
+    const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+
+    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 取得 URL 參數
+    const urlParams = new URLSearchParams(window.location.search);
+    const room = urlParams.get('room') || 'TEST';
+    const role = urlParams.get('role'); // 空或 "manual"
+
+    // 遊戲設定
+    const config = {
+      type: Phaser.AUTO,
+      parent: 'game-container',
+      width: window.innerWidth,
+      height: window.innerHeight,
+      physics: { default: 'arcade' },
+      scene: [role === 'manual' ? ManualScene : BombScene],
+      backgroundColor: '#000'
+    };
+
+    // 你原本的炸彈與說明書場景直接貼這裡（下面會給你簡化版，完整版你原本就有了）
+    // 為了讓你現在就能跑，我先放最簡版，之後你再把你原本的 BombScene / ManualScene 貼回來即可
+
+    class BombScene extends Phaser.Scene {
+      create() {
+        this.add.text(100, 100, `房間：\( {room}\n你是拆彈專家\n掃碼時間： \){new Date().toLocaleTimeString()}`, {fontSize:'32px', color:'#f00'});
+        this.add.text(100, 300, '請用無線電向說明書組通聯！', {fontSize:'48px', color:'#fff'});
+        // 這裡放你原本所有炸彈模組程式碼
+      }
+    }
+
+    class ManualScene extends Phaser.Scene {
+      create() {
+        this.add.text(100, 100, `房間：${room}\n你是說明書持有者`, {fontSize:'32px', color:'#0f0'});
+        this.add.text(100, 300, '請等待拆彈專家呼叫！', {fontSize:'48px', color:'#fff'});
+        // 這裡放你原本所有說明書內容
+      }
+    }
+
+    // 記錄掃碼報到
+    async function logEnter() {
+      await supabase.from('sessions').insert({
+        room: room,
+        role: role || 'bomb',
+        entered_at: new Date().toISOString()
+      });
+    }
+    logEnter();
+
+    new Phaser.Game(config);
+  </script>
+</body>
+</html>
